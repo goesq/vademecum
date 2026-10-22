@@ -349,10 +349,10 @@ function vistaInicio() {
 
   principal.innerHTML = `<div class="pagina pagina--larga">
     <section class="ola">
-      <h1>A lei seca, inteira, num lugar só.</h1>
-      <p class="ola__sub">${st.indice.length} leis no texto vigente, com ${numBR(totArts)} artigos, e ${numBR(s.SV + s.STF + s.STJ)} súmulas do STF e do STJ. Toque no número de um artigo para grifar, favoritar ou anotar.</p>
+      <h1>Leis e súmulas</h1>
+      <p class="ola__sub">${st.indice.length} leis no texto vigente (${numBR(totArts)} artigos) e ${numBR(s.SV + s.STF + s.STJ)} súmulas do STF e do STJ.</p>
       ${ultLei ? `<div class="ola__acoes"><button class="btn btn--primario" data-ir="${ultLei.id}" data-art="${esc(ult.art || "")}">Continuar em ${esc(ultLei.sigla)}${ult.art ? ", art. " + esc(ult.rot || ult.art) : ""}</button></div>` : ""}
-      <div class="exemplos"><span>Experimente buscar</span>${["cf 5", "cp 121", "sv 11", "boa-fé", "usucapião"].map(q => `<button class="chip" data-buscar="${q}">${q}</button>`).join("")}</div>
+      <div class="exemplos"><span>Atalhos</span>${["cf 5", "cp 121", "sv 11", "boa-fé", "usucapião"].map(q => `<button class="chip" data-buscar="${q}">${q}</button>`).join("")}</div>
       <div id="instalar"></div>
     </section>
     ${GRUPOS.map(g => estante(g, st.indice.filter(l => l.grupo === g).map(l => livro(l.id, l.sigla, l.nome, plural(l.artigos, "artigo", "artigos"), l.cor)).join(""))).join("")}
@@ -825,7 +825,7 @@ $("#bt-inicio").addEventListener("click", () => ir("inicio"));
 $("#bt-menu").addEventListener("click", () => abrirGaveta(true));
 $("#veu").addEventListener("click", () => abrirGaveta(false));
 
-let tamanho = ler("vm-fs", 17);
+let tamanho = ler("vm-fs", 16);
 const aplicarTamanho = () => document.documentElement.style.setProperty("--fs-leitura", tamanho + "px");
 $("#bt-fmenos").addEventListener("click", () => { tamanho = Math.max(14, tamanho - 1); aplicarTamanho(); gravar("vm-fs", tamanho); });
 $("#bt-fmais").addEventListener("click", () => { tamanho = Math.min(24, tamanho + 1); aplicarTamanho(); gravar("vm-fs", tamanho); });
