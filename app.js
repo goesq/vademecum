@@ -756,14 +756,20 @@ function ligarBackup() {
     e.target.value = "";
   });
 }
+// claro é o padrão; "sistema" segue o tema do aparelho
+const escuroNoSistema = matchMedia("(prefers-color-scheme: dark)");
+let temaAtual = "light";
 function aplicarTema(tema) {
-  if (tema) document.documentElement.dataset.theme = tema; else delete document.documentElement.dataset.theme;
-  $$("#tema button").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.tema === tema)));
+  temaAtual = ["light", "dark", "sistema"].includes(tema) ? tema : "light";
+  const escuro = temaAtual === "dark" || (temaAtual === "sistema" && escuroNoSistema.matches);
+  document.documentElement.dataset.theme = escuro ? "dark" : "light";
+  $$("#tema button").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.tema === temaAtual)));
 }
+escuroNoSistema.addEventListener?.("change", () => { if (SITE && temaAtual === "sistema") aplicarTema("sistema"); });
 function iniciarSite() {
   if (!SITE) return;
   $("#linha-tema").hidden = false;
-  aplicarTema(ler("vm-tema", ""));
+  aplicarTema(ler("vm-tema", "light"));
   $("#tema").addEventListener("click", e => {
     const b = e.target.closest("[data-tema]");
     if (!b) return;
