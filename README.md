@@ -18,13 +18,16 @@ A conversão é automática e não substitui a publicação oficial. Antes de ci
 
 ## Como funciona
 
-`build.py` faz tudo, sem dependências além do Python 3:
+O app são três arquivos: `vade-mecum.html` (estrutura), `estilo.css` e `app.js`. O mesmo código roda como site (GitHub Pages) e como artifact do claude.ai; a meta `vm-modo` diz qual.
+
+`build.py` faz o resto, sem dependências além do Python 3:
 
 ```bash
-python -I build.py tudo      # baixa as leis, gera dados/ e monta site/
+python -I build.py tudo      # baixa as leis, gera dados/ e monta site/ e artifact/
 python -I build.py baixar    # só baixa (aceita um commit: baixar <sha>)
 python -I build.py dados     # só converte fonte/md em dados/*.json
-python -I build.py site      # só monta site/ a partir de vade-mecum.html e dados/
+python -I build.py site      # só monta site/ (instalável e offline)
+python -I build.py artifact  # só monta artifact/ (para publicar no claude.ai)
 ```
 
 Para ver localmente: `python -I -m http.server 8765 --directory site` e abra http://localhost:8765.

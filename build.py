@@ -4,7 +4,8 @@ Uso (sempre a partir de qualquer pasta; os caminhos são relativos a este arquiv
   python -I build.py baixar [commit]   baixa os .md para fonte/md (padrão: commit mais recente)
   python -I build.py dados             converte fonte/md em dados/*.json
   python -I build.py site              monta o site estático em site/
-  python -I build.py tudo [commit]     as três etapas
+  python -I build.py artifact          monta a versão para o claude.ai em artifact/
+  python -I build.py tudo [commit]     todas as etapas
 """
 import hashlib
 import json
@@ -25,27 +26,27 @@ DADOS = RAIZ / "dados"
 SITE = RAIZ / "site"
 REPO = "ctresb/leis"
 
-# id, sigla, nome, grupo, cor da aba lateral, caminho no repo
+# id, sigla, nome, nome curto (índice lateral), grupo, cor da aba lateral, caminho no repo
 LEIS = [
-    ("cf", "CF", "Constituição Federal", "Constituição", "#1f6b45", "constituicao.md"),
-    ("cc", "CC", "Código Civil", "Códigos", "#1d4f91", "federal/leis-ordinarias/2002/lei-10406-2002-01-10.md"),
-    ("cpc", "CPC", "Código de Processo Civil", "Códigos", "#3b82b8", "federal/leis-ordinarias/2015/lei-13105-2015-03-16.md"),
-    ("cp", "CP", "Código Penal", "Códigos", "#a3262f", "federal/decretos-lei/1940/del-2848-1940-12-07.md"),
-    ("cpp", "CPP", "Código de Processo Penal", "Códigos", "#cf6a2a", "federal/decretos-lei/1941/del-3689-1941-10-03.md"),
-    ("clt", "CLT", "Consolidação das Leis do Trabalho", "Códigos", "#7a5230", "federal/decretos-lei/1943/del-5452-1943-05-01.md"),
-    ("cdc", "CDC", "Código de Defesa do Consumidor", "Códigos", "#6d3fa0", "federal/leis-ordinarias/1990/lei-8078-1990-09-11.md"),
-    ("ctn", "CTN", "Código Tributário Nacional", "Códigos", "#0f7c7c", "federal/leis-ordinarias/1966/lei-5172-1966-10-25.md"),
-    ("eca", "ECA", "Estatuto da Criança e do Adolescente", "Estatutos e leis", "#c49a12", "federal/leis-ordinarias/1990/lei-8069-1990-07-13.md"),
-    ("lindb", "LINDB", "Lei de Introdução às Normas do Direito Brasileiro", "Estatutos e leis", "#55606e", "federal/decretos-lei/1942/del-4657-1942-09-04.md"),
-    ("oab", "EOAB", "Estatuto da Advocacia e da OAB", "Estatutos e leis", "#8a1c4a", "federal/leis-ordinarias/1994/lei-8906-1994-07-04.md"),
-    ("jec", "JEC", "Lei dos Juizados Especiais", "Estatutos e leis", "#4a7a2a", "federal/leis-ordinarias/1995/lei-9099-1995-09-26.md"),
-    ("lep", "LEP", "Lei de Execução Penal", "Estatutos e leis", "#9c4a1a", "federal/leis-ordinarias/1984/lei-7210-1984-07-11.md"),
-    ("drogas", "Drogas", "Lei de Drogas", "Estatutos e leis", "#5b5b9a", "federal/leis-ordinarias/2006/lei-11343-2006-08-23.md"),
-    ("lmp", "LMP", "Lei Maria da Penha", "Estatutos e leis", "#b0457a", "federal/leis-ordinarias/2006/lei-11340-2006-08-07.md"),
-    ("hed", "Hediondos", "Lei dos Crimes Hediondos", "Estatutos e leis", "#6e2a2a", "federal/leis-ordinarias/1990/lei-8072-1990-07-25.md"),
-    ("lia", "LIA", "Lei de Improbidade Administrativa", "Estatutos e leis", "#2f5f7a", "federal/leis-ordinarias/1992/lei-8429-1992-06-02.md"),
-    ("lpa", "LPA", "Lei do Processo Administrativo", "Estatutos e leis", "#3d6b5c", "federal/leis-ordinarias/1999/lei-9784-1999-01-29.md"),
-    ("ms", "LMS", "Lei do Mandado de Segurança", "Estatutos e leis", "#7a6a2a", "federal/leis-ordinarias/2009/lei-12016-2009-08-07.md"),
+    ("cf", "CF", "Constituição Federal", "Constituição", "Constituição", "#1f6b45", "constituicao.md"),
+    ("cc", "CC", "Código Civil", "Civil", "Códigos", "#1d4f91", "federal/leis-ordinarias/2002/lei-10406-2002-01-10.md"),
+    ("cpc", "CPC", "Código de Processo Civil", "Processo Civil", "Códigos", "#3b82b8", "federal/leis-ordinarias/2015/lei-13105-2015-03-16.md"),
+    ("cp", "CP", "Código Penal", "Penal", "Códigos", "#a3262f", "federal/decretos-lei/1940/del-2848-1940-12-07.md"),
+    ("cpp", "CPP", "Código de Processo Penal", "Processo Penal", "Códigos", "#cf6a2a", "federal/decretos-lei/1941/del-3689-1941-10-03.md"),
+    ("clt", "CLT", "Consolidação das Leis do Trabalho", "Trabalho", "Códigos", "#7a5230", "federal/decretos-lei/1943/del-5452-1943-05-01.md"),
+    ("cdc", "CDC", "Código de Defesa do Consumidor", "Consumidor", "Códigos", "#6d3fa0", "federal/leis-ordinarias/1990/lei-8078-1990-09-11.md"),
+    ("ctn", "CTN", "Código Tributário Nacional", "Tributário", "Códigos", "#0f7c7c", "federal/leis-ordinarias/1966/lei-5172-1966-10-25.md"),
+    ("eca", "ECA", "Estatuto da Criança e do Adolescente", "Criança e Adolescente", "Estatutos e leis", "#c49a12", "federal/leis-ordinarias/1990/lei-8069-1990-07-13.md"),
+    ("lindb", "LINDB", "Lei de Introdução às Normas do Direito Brasileiro", "Introdução às Normas", "Estatutos e leis", "#55606e", "federal/decretos-lei/1942/del-4657-1942-09-04.md"),
+    ("oab", "EOAB", "Estatuto da Advocacia e da OAB", "Advocacia e OAB", "Estatutos e leis", "#8a1c4a", "federal/leis-ordinarias/1994/lei-8906-1994-07-04.md"),
+    ("jec", "JEC", "Lei dos Juizados Especiais", "Juizados Especiais", "Estatutos e leis", "#4a7a2a", "federal/leis-ordinarias/1995/lei-9099-1995-09-26.md"),
+    ("lep", "LEP", "Lei de Execução Penal", "Execução Penal", "Estatutos e leis", "#9c4a1a", "federal/leis-ordinarias/1984/lei-7210-1984-07-11.md"),
+    ("drogas", "LD", "Lei de Drogas", "Drogas", "Estatutos e leis", "#5b5b9a", "federal/leis-ordinarias/2006/lei-11343-2006-08-23.md"),
+    ("lmp", "LMP", "Lei Maria da Penha", "Maria da Penha", "Estatutos e leis", "#b0457a", "federal/leis-ordinarias/2006/lei-11340-2006-08-07.md"),
+    ("hed", "LCH", "Lei dos Crimes Hediondos", "Crimes Hediondos", "Estatutos e leis", "#6e2a2a", "federal/leis-ordinarias/1990/lei-8072-1990-07-25.md"),
+    ("lia", "LIA", "Lei de Improbidade Administrativa", "Improbidade", "Estatutos e leis", "#2f5f7a", "federal/leis-ordinarias/1992/lei-8429-1992-06-02.md"),
+    ("lpa", "LPA", "Lei do Processo Administrativo", "Processo Administrativo", "Estatutos e leis", "#3d6b5c", "federal/leis-ordinarias/1999/lei-9784-1999-01-29.md"),
+    ("ms", "LMS", "Lei do Mandado de Segurança", "Mandado de Segurança", "Estatutos e leis", "#7a6a2a", "federal/leis-ordinarias/2009/lei-12016-2009-08-07.md"),
 ]
 PASTAS_SUMULAS = ["jurisprudencia/stf/sumulas-vinculantes", "jurisprudencia/stf/sumulas", "jurisprudencia/stj/sumulas"]
 
@@ -80,7 +81,7 @@ def baixar(commit=None):
     sha, data = info["sha"], info["commit"]["committer"]["date"][:10]
     print(f"ctresb/leis @ {sha[:10]} ({data})")
 
-    caminhos = [l[5] for l in LEIS]
+    caminhos = [l[-1] for l in LEIS]
     for pasta in PASTAS_SUMULAS:
         arvore = api(f"git/trees/{sha}")
         for parte in pasta.split("/"):
@@ -202,12 +203,12 @@ def dados():
     shutil.rmtree(DADOS, ignore_errors=True)
     DADOS.mkdir(parents=True)
     leis = []
-    for ident, sigla, nome, grupo, cor, caminho in LEIS:
+    for ident, sigla, nome, curto, grupo, cor, caminho in LEIS:
         meta, corpo = cabecalho((fonte / caminho).read_text(encoding="utf-8"))
         nos = converter_lei(corpo)
         arts = sum(1 for n in nos if n["t"] == "a")
         info = {
-            "id": ident, "sigla": sigla, "nome": nome, "grupo": grupo, "cor": cor,
+            "id": ident, "sigla": sigla, "nome": nome, "curto": curto, "grupo": grupo, "cor": cor,
             "titulo": meta.get("titulo", "Constituição da República Federativa do Brasil de 1988"),
             "ementa": meta.get("ementa", ""),
             "fonte": meta.get("fonte", "https://www.planalto.gov.br/ccivil_03/constituicao/constituicaocompilado.htm"),
@@ -335,21 +336,53 @@ self.addEventListener("fetch", e => {
 """
 
 
-def site():
+CODIGO = ["vade-mecum.html", "estilo.css", "app.js"]
+
+
+def versao():
+    """Muda sempre que o código ou os dados mudam: força o navegador a buscar de novo."""
+    h = hashlib.sha256()
+    for f in [RAIZ / c for c in CODIGO] + sorted(DADOS.glob("*.json")):
+        h.update(f.read_bytes())
+    return h.hexdigest()[:10]
+
+
+def carimbar(html, versao_, modo):
+    """Grava versão e modo nas metas e nos ?v= do HTML-fonte."""
+    novo = html.replace('<meta name="vm-versao" content="dev">', f'<meta name="vm-versao" content="{versao_}">')
+    novo = novo.replace('<meta name="vm-modo" content="artifact">', f'<meta name="vm-modo" content="{modo}">')
+    novo = novo.replace("?v=dev", f"?v={versao_}")
+    assert f'content="{versao_}"' in novo and f'content="{modo}"' in novo and "?v=dev" not in novo
+    return novo
+
+
+def copiar_codigo(destino):
+    shutil.copytree(DADOS, destino / "dados")
+    for c in CODIGO[1:]:
+        shutil.copy(RAIZ / c, destino / c)
+
+
+def artifact():
+    """Pasta pronta para publicar como artifact no claude.ai (página sem <html>, o claude.ai põe)."""
+    destino = RAIZ / "artifact"
+    v = versao()
+    shutil.rmtree(destino, ignore_errors=True)
+    destino.mkdir()
+    copiar_codigo(destino)
     html = (RAIZ / "vade-mecum.html").read_text(encoding="utf-8")
+    (destino / "vade-mecum.html").write_text(carimbar(html, v, "artifact"), encoding="utf-8")
+    print(f"artifact/ pronto: versão {v}")
+
+
+def site():
+    v = versao()
+    html = carimbar((RAIZ / "vade-mecum.html").read_text(encoding="utf-8"), v, "site")
     corte = html.index('<header class="topo">')
     cabeca, corpo = html[:corte], html[corte:]
-    h = hashlib.sha256(html.encode())
-    for f in sorted(DADOS.glob("*.json")):
-        h.update(f.read_bytes())
-    versao = h.hexdigest()[:10]
-    corpo = re.sub(r'const VERSAO = "[^"]*";', f'const VERSAO = "{versao}";', corpo, count=1)
-    corpo = corpo.replace("const SITE = false;", "const SITE = true;", 1)
-    assert f'"{versao}"' in corpo and "const SITE = true;" in corpo
 
     shutil.rmtree(SITE, ignore_errors=True)
     (SITE / "icones").mkdir(parents=True)
-    shutil.copytree(DADOS, SITE / "dados")
+    copiar_codigo(SITE)
     (SITE / "index.html").write_text(CABECA_SITE + cabeca + "</head>\n<body>\n" + corpo + "\n</body>\n</html>\n", encoding="utf-8")
     (SITE / "favicon.svg").write_text(FAVICON, encoding="utf-8")
     png(SITE / "icones/icone-192.png", 192)
@@ -369,19 +402,19 @@ def site():
     }
     (SITE / "manifest.webmanifest").write_text(json.dumps(manifesto, ensure_ascii=False, indent=1), encoding="utf-8")
     arquivos = ["./", "manifest.webmanifest", "favicon.svg", "icones/icone-192.png", "icones/apple-touch-icon.png"]
-    arquivos += [f"dados/{f.name}?v={versao}" for f in sorted(DADOS.glob("*.json"))]
-    (SITE / "sw.js").write_text(SW.replace("__VERSAO__", versao).replace("__ARQUIVOS__", json.dumps(arquivos)), encoding="utf-8")
+    arquivos += [f"{c}?v={v}" for c in CODIGO[1:]]
+    arquivos += [f"dados/{f.name}?v={v}" for f in sorted(DADOS.glob("*.json"))]
+    (SITE / "sw.js").write_text(SW.replace("__VERSAO__", v).replace("__ARQUIVOS__", json.dumps(arquivos)), encoding="utf-8")
     tamanho = sum(f.stat().st_size for f in SITE.rglob("*") if f.is_file())
-    print(f"site/ pronto: versão {versao}, {tamanho / 1e6:.1f} MB")
+    print(f"site/ pronto: versão {v}, {tamanho / 1e6:.1f} MB")
 
+
+ETAPAS = {"baixar": baixar, "dados": dados, "site": site, "artifact": artifact}
 
 if __name__ == "__main__":
     etapa, *resto = sys.argv[1:] or ["tudo"]
-    if etapa in ("baixar", "tudo"):
-        baixar(*resto[:1])
-    if etapa in ("dados", "tudo"):
-        dados()
-    if etapa in ("site", "tudo"):
-        site()
-    if etapa not in ("baixar", "dados", "site", "tudo"):
+    if etapa not in (*ETAPAS, "tudo"):
         sys.exit(__doc__)
+    for nome, funcao in ETAPAS.items():
+        if etapa in (nome, "tudo"):
+            funcao(*resto[:1]) if nome == "baixar" else funcao()
