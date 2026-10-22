@@ -1,0 +1,5 @@
+# gerados por build.py
+fonte/
+dados/
+site/
+__pycache__/
