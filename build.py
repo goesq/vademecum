@@ -293,6 +293,9 @@ CABECA_SITE = """<!doctype html>
 <link rel="icon" href="favicon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="icones/apple-touch-icon.png">
 <meta name="apple-mobile-web-app-title" content="Vade Mecum">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
 <style>:root{color-scheme:light;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0}img{max-width:100%}[hidden]{display:none!important}</style>
 """
 
@@ -301,9 +304,27 @@ const VERSAO = "__VERSAO__";
 const CACHE = "vm-" + VERSAO;
 const FONTES = "vm-fontes";
 const ARQUIVOS = __ARQUIVOS__;
+const CSS_FONTES = __CSS_FONTES__;
+
+// fontes do Google: guarda já na instalação, para o app ficar igual sem internet desde o começo.
+// Se falhar (sem rede, bloqueio), segue com as fontes do sistema.
+async function guardarFontes() {
+  const c = await caches.open(FONTES);
+  for (const url of CSS_FONTES) {
+    if (await c.match(url)) continue;
+    const r = await fetch(url);
+    if (!r.ok) continue;
+    const css = await r.clone().text();
+    const woffs = [...css.matchAll(/url\\((https:\\/\\/fonts\\.gstatic\\.com\\/[^)]+)\\)/g)].map(m => m[1]);
+    await Promise.all(woffs.map(w => fetch(w, { mode: "cors" }).then(f => f.ok && c.put(w, f))));
+    await c.put(url, r);
+  }
+}
 
 self.addEventListener("install", e => {
-  e.waitUntil(caches.open(CACHE).then(c => c.addAll(ARQUIVOS)).then(() => self.skipWaiting()));
+  e.waitUntil(caches.open(CACHE).then(c => c.addAll(ARQUIVOS))
+    .then(() => guardarFontes().catch(() => {}))
+    .then(() => self.skipWaiting()));
 });
 
 self.addEventListener("activate", e => {
@@ -317,7 +338,7 @@ self.addEventListener("fetch", e => {
   if (req.method !== "GET") return;
   const url = new URL(req.url);
   if (url.hostname === "fonts.googleapis.com" || url.hostname === "fonts.gstatic.com") {
-    e.respondWith(caches.open(FONTES).then(async c => (await c.match(req)) || fetch(req).then(r => { c.put(req, r.clone()); return r; })));
+    e.respondWith(caches.open(FONTES).then(async c => (await c.match(req, { ignoreVary: true })) || fetch(req).then(r => { c.put(req, r.clone()); return r; })));
     return;
   }
   if (url.origin !== location.origin) return;
@@ -391,19 +412,27 @@ def site():
     manifesto = {
         "name": "Vade Mecum Aberto", "short_name": "Vade Mecum", "lang": "pt-BR",
         "description": "Constituição, códigos, leis e súmulas com busca, marca-texto e anotações.",
-        "start_url": "./", "scope": "./", "display": "standalone",
-        "background_color": "#f5f6f4", "theme_color": "#7b1e2b",
+        "id": "./", "start_url": "./", "scope": "./", "display": "standalone",
+        "categories": ["education", "books", "productivity"],
+        "background_color": "#f4f5f2", "theme_color": "#ffffff",
         "icons": [
             {"src": "icones/icone-192.png", "sizes": "192x192", "type": "image/png"},
             {"src": "icones/icone-512.png", "sizes": "512x512", "type": "image/png"},
             {"src": "icones/mascaravel-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable"},
+        ],
+        "shortcuts": [
+            {"name": "Constituição Federal", "short_name": "Constituição", "url": "./#cf", "icons": [{"src": "icones/icone-192.png", "sizes": "192x192"}]},
+            {"name": "Súmulas do STF e do STJ", "short_name": "Súmulas", "url": "./#sumulas", "icons": [{"src": "icones/icone-192.png", "sizes": "192x192"}]},
+            {"name": "Meus grifos", "short_name": "Grifos", "url": "./#grifos", "icons": [{"src": "icones/icone-192.png", "sizes": "192x192"}]},
         ],
     }
     (SITE / "manifest.webmanifest").write_text(json.dumps(manifesto, ensure_ascii=False, indent=1), encoding="utf-8")
     arquivos = ["./", "manifest.webmanifest", "favicon.svg", "icones/icone-192.png", "icones/apple-touch-icon.png"]
     arquivos += [f"{c}?v={v}" for c in CODIGO[1:]]
     arquivos += [f"dados/{f.name}?v={v}" for f in sorted(DADOS.glob("*.json"))]
-    (SITE / "sw.js").write_text(SW.replace("__VERSAO__", v).replace("__ARQUIVOS__", json.dumps(arquivos)), encoding="utf-8")
+    css_fontes = re.findall(r'href="(https://fonts\.googleapis\.com/css2[^"]+)"', html)
+    sw = SW.replace("__VERSAO__", v).replace("__ARQUIVOS__", json.dumps(arquivos)).replace("__CSS_FONTES__", json.dumps(css_fontes))
+    (SITE / "sw.js").write_text(sw, encoding="utf-8")
     tamanho = sum(f.stat().st_size for f in SITE.rglob("*") if f.is_file())
     print(f"site/ pronto: versão {v}, {tamanho / 1e6:.1f} MB")
 

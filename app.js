@@ -701,6 +701,16 @@ function montarInstalar() {
     el.innerHTML = `<p class="dica dica--ios">No iPhone, toque em Compartilhar e depois em “Adicionar à Tela de Início”: abre como app, funciona sem internet e seus grifos ficam guardados.</p>`;
   }
 }
+function avisarAtualizacao() {
+  if ($("#bt-atualizar")) return;
+  const el = $("#status");
+  const b = document.createElement("button");
+  b.className = "btn btn--pequeno";
+  b.id = "bt-atualizar";
+  b.textContent = "Nova versão: recarregar";
+  b.addEventListener("click", () => location.reload());
+  el.after(b);
+}
 function exportarGrifos() {
   const conteudo = { app: "vade-mecum-aberto", formato: 1, exportado: new Date().toISOString(), marcas: st.marcas };
   const a = document.createElement("a");
@@ -763,6 +773,8 @@ function aplicarTema(tema) {
   temaAtual = ["light", "dark", "sistema"].includes(tema) ? tema : "light";
   const escuro = temaAtual === "dark" || (temaAtual === "sistema" && escuroNoSistema.matches);
   document.documentElement.dataset.theme = escuro ? "dark" : "light";
+  // barra do navegador/app instalado acompanha o fundo do topo
+  $('meta[name="theme-color"]')?.setAttribute("content", escuro ? "#1c2024" : "#ffffff");
   $$("#tema button").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.tema === temaAtual)));
 }
 escuroNoSistema.addEventListener?.("change", () => { if (SITE && temaAtual === "sistema") aplicarTema("sistema"); });
@@ -778,6 +790,9 @@ function iniciarSite() {
   });
   addEventListener("beforeinstallprompt", e => { e.preventDefault(); pedidoInstalar = e; montarInstalar(); });
   if ("serviceWorker" in navigator) {
+    // havia uma versão no controle e outra assumiu: código e leis novos chegam ao recarregar
+    const tinhaVersao = !!navigator.serviceWorker.controller;
+    navigator.serviceWorker.addEventListener("controllerchange", () => { if (tinhaVersao) avisarAtualizacao(); });
     navigator.serviceWorker.register("sw.js").catch(() => {});
     navigator.serviceWorker.ready.then(() => { st.offline = true; mostrarStatus(); });
   }
